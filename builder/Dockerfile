@@ -127,12 +127,12 @@ COPY --from=artifacts /buildroot/ambassador/demo/config /ambassador/ambassador-d
 COPY --from=artifacts /buildroot/ambassador/demo/services /ambassador/demo-services
 COPY --from=artifacts /buildroot/ambassador/docs/yaml/ambassador/ambassador-crds.yaml /opt/ambassador/etc/crds.yaml
 
-LABEL name="value" \
-        release="release" \
-        version="version" \
-        summary="summary" \
-        description="description" \
-        vendor="version"
+LABEL name="ambassador" \
+        release="1.9.1" \
+        version="1.9.1" \
+        summary="ambassador image based on top of red hat UBI" \
+        description="ambassador image based on top of red hat UBI" \
+        vendor="ambassador, modified by kasten"
 
 # Fix permissions to allow correctly running as a non root user
 # XXX: We could combine everything into one tree in the builder, fix permissions
