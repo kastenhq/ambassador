@@ -18,7 +18,7 @@
 
 # This argument controls the base image that is used for the release
 # containers.
-ARG base="registry.access.redhat.com/ubi8/ubi:8.1"
+ARG base="registry.access.redhat.com/ubi8/ubi-minimal:8.1"
 # This argument sets the base image for the build container image. This
 # base image contains only third-party code.
 ARG builderbase="i-forgot-to-set-build-arg-builderbase"
@@ -80,19 +80,18 @@ RUN mkdir -p /licenses && \
 #RUN microdnf update && microdnf install shadow-utils httpd-tools
 # Always have an "ambassador" user as UID 8888. This is what we recommend
 # people run as. (Note that the "-D" actually leaves the password locked.)
-RUN useradd ambassador -u 8888 -G root --no-create-home -s /bin/false
-
-#RUN microdnf remove shadow-utils && \
-#  microdnf clean all
+RUN microdnf install -y shadow-utils && \
+    useradd ambassador -u 8888 -G root --no-create-home -s /bin/false && \
+    microdnf remove shadow-utils && \
+    microdnf clean all
 
 # External stuff that should change infrequently
-# RUN apk --no-cache add bash curl python3 libcap htop
-RUN yum -y update && \
-    yum install -y \
+RUN microdnf -y update && \
+    microdnf install -y \
     bash \
     python38
 
-RUN rpm  -Uvh https://www.rpmfind.net/linux/openmandriva/cooker/repository/x86_64/main/release/cross-x86_64-openmandriva-linux-musl-musl-1.2.1-1-omv4002.x86_64.rpm
+RUN rpm -Uvh https://www.rpmfind.net/linux/openmandriva/cooker/repository/x86_64/main/release/cross-x86_64-openmandriva-linux-musl-musl-1.2.1-1-omv4002.x86_64.rpm
 
 RUN ln -s /usr/bin/python3 /usr/bin/python
 COPY --from=artifacts /usr/bin/kubectl /usr/bin/kubectl
