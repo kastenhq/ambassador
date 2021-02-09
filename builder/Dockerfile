@@ -18,7 +18,7 @@
 
 # This argument controls the base image that is used for the release
 # containers.
-ARG base="docker.io/frolvlad/alpine-glibc:alpine-3.12_glibc-2.32"
+ARG base="registry.access.redhat.com/ubi8/ubi-minimal:8.1"
 
 # This argument sets the base image for the build container image. This
 # base image contains only third-party code.
@@ -74,12 +74,25 @@ FROM ${artifacts} as artifacts
 
 FROM ${base} as ambassador
 
+RUN mkdir -p /licenses && \
+    echo "AL v2.0" > LICENSE && \
+    mv LICENSE /licenses
+
 # Always have an "ambassador" user as UID 8888. This is what we recommend
 # people run as. (Note that the "-D" actually leaves the password locked.)
-RUN adduser ambassador -u 8888 -G root -D -H -s /bin/false
+RUN microdnf install -y shadow-utils && \
+    useradd ambassador -u 8888 -G root --no-create-home -s /bin/false && \
+    microdnf remove shadow-utils && \
+    microdnf clean all
 
 # External stuff that should change infrequently
-RUN apk --no-cache add bash curl python3 libcap htop
+RUN microdnf -y update && \
+    microdnf install -y \
+    bash \
+    python38
+
+RUN rpm -Uvh https://www.rpmfind.net/linux/openmandriva/cooker/repository/x86_64/main/release/cross-x86_64-openmandriva-linux-musl-musl-1.2.1-1-omv4002.x86_64.rpm
+
 RUN ln -s /usr/bin/python3 /usr/bin/python
 COPY --from=artifacts /usr/bin/kubectl /usr/bin/kubectl
 COPY --from=artifacts /usr/lib/libyaml* /usr/lib/
@@ -113,6 +126,13 @@ COPY --from=artifacts /buildroot/ambassador/demo/config /ambassador/ambassador-d
 COPY --from=artifacts /buildroot/ambassador/demo/services /ambassador/demo-services
 COPY --from=artifacts /buildroot/ambassador/docs/yaml/ambassador/ambassador-crds.yaml /opt/ambassador/etc/crds.yaml
 
+LABEL name="ambassador" \
+        release="1.9.1" \
+        version="1.9.1" \
+        summary="ambassador image based on top of red hat UBI" \
+        description="ambassador image based on top of red hat UBI" \
+        vendor="ambassador, modified by kasten"
+
 # Fix permissions to allow correctly running as a non root user
 # XXX: We could combine everything into one tree in the builder, fix permissions
 # there, and then a use single COPY to get everything and avoid duplicating the
@@ -124,8 +144,8 @@ RUN chgrp -R 0 /ambassador && \
 WORKDIR /ambassador
 
 # Force the HOME environment variable to a directory that'll always be writeable.
-# We use /tmp/ambassador for this, and make sure it exists in our entrypoint, 
-# because trying to create it here in the Dockerfile doesn't always work very 
+# We use /tmp/ambassador for this, and make sure it exists in our entrypoint,
+# because trying to create it here in the Dockerfile doesn't always work very
 # well in the face of situations like KAT volume-mounting /tmp/ambassador or
 # the like.
 ENV HOME=/tmp/ambassador
